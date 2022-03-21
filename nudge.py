@@ -126,7 +126,7 @@ if args.report or args.dash :
         if currentSprint != nudge['SPRINT'] :
             currentSprint = nudge['SPRINT']
             print("+{}+".format("="*100))
-            print("=== SPRINT: {} ===".format(currentSprint))
+            print("\x1b[1;37;44m" + "=== SPRINT: {} ===".format(currentSprint) + "\x1b[0m")
         if len(nudge['COMMENTS']) > 0 :
             latestCommentID = nudge['COMMENTS'].pop()
             latestComment = conn.comment(nudge['ID'],latestCommentID).body
@@ -142,7 +142,7 @@ if args.report or args.dash :
 
         print("+{}+".format("="*100))
         if len(epic) == 0 :
-            print(" -- NOTE:: {} has no EPIC assigned, please link to an EPIC -- ".format(nudge['JIRA']))
+            print("\x1b[0;30;43m" + " -- NOTE:: {} has no EPIC assigned, please link to an EPIC -- ".format(nudge['JIRA']) + "\x1b[0m")
         print("{} - {} \nLabels: {}\nOwner: {}\nCreator: {}\nStatus: {}\nLink: {}\nLast Comment:\n{}\n\n".
               format(nudge['JIRA'],
                      nudge['SUMM'],
