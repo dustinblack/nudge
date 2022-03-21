@@ -115,7 +115,7 @@ if len(issues) > 0 :
                 "TASKS" : jira['fields']['subtasks']
             })
 
-nudges.sort(key=operator.itemgetter('OWNER'))
+nudges.sort(key=operator.itemgetter('SPRINT'))
 
 if args.report or args.dash :
     nudges.sort(key=operator.itemgetter('OWNER'))
