@@ -20,6 +20,7 @@ import jira
 import os
 import argparse
 import operator
+import re
 
 parser= argparse.ArgumentParser(description="Tool to query and help nudge JIRA users")
 parser.add_argument(
@@ -27,6 +28,11 @@ parser.add_argument(
     default=False,
     action='store_true',
     dest="report")
+parser.add_argument(
+    "--dash",
+    default=False,
+    action='store_true',
+    dest="dash")
 args = parser.parse_args()
 
 # Team Name
@@ -59,6 +65,12 @@ issues=[]
 nudges=[]
 nudgeMessage=[]
 
+## TODO I might need this to looup the custom field name in a better way
+#allfields = conn.fields()
+#nameMap = {field['name']:field['id'] for field in allfields}
+#for field in allfields:
+#    print(field)
+
 if len(queries) < 1:
     log.logger.error("No JIRA queries provided.")
     exit(1)
@@ -76,9 +88,21 @@ if len(issues) > 0 :
                 owner = "No Owner"
             else :
                 owner = jira['fields']['assignee']['displayName']
+
+            ## TODO Mr. Ugly Code needs cleanup
+            for sprint in jira['fields']['customfield_12310940'] :
+                res = re.sub(r'^.*?\[', '[', sprint)
+                lst = res.strip('][').split(',')
+                foo = {}
+                for l in lst :
+                    foo[l.split('=')[0]] = l.split('=')[1]
+                if "ACTIVE" in foo['state'] :
+                    sprint = foo['name']
+
             nudges.append({
                 "JIRA" : "{}".format(jira['key']),
                 "OWNER" : "{}".format(owner),
+                "SPRINT" : "{}".format(sprint),
                 "CREATOR" : "{}".format(jira['fields']['creator']['displayName']),
                 "STATUS" : "{}".format(jira['fields']['status']['name']),
                 "LINK" : "{}/browse/{}".format(server,jira['key']),
@@ -93,7 +117,51 @@ if len(issues) > 0 :
 
 nudges.sort(key=operator.itemgetter('OWNER'))
 
-if not args.report :
+if args.report or args.dash :
+    nudges.sort(key=operator.itemgetter('OWNER'))
+    if args.dash:
+        print("<html><body><table>")
+    for nudge in nudges:
+        if len(nudge['COMMENTS']) > 0 :
+            latestCommentID = nudge['COMMENTS'].pop()
+            latestComment = conn.comment(nudge['ID'],latestCommentID).body
+        else:
+            latestComment = "No comments"
+        if nudge['STATUS'] == "To Do":
+            continue
+
+        epic = conn.search_issues("project = PerfScale AND id={} AND \"Epic Link\" is not EMPTY".format(nudge['ID']))
+
+        if args.dash:
+            print("<tr><td>")
+
+        print("+{}+".format("="*100))
+        if len(epic) == 0 :
+            print(" -- NOTE:: {} has no EPIC assigned, please link to an EPIC -- ".format(nudge['JIRA']))
+        print("{} - {} \nSprint: {}\nLabels: {}\nOwner: {}\nCreator: {}\nStatus: {}\nLink: {}\nLast Comment:\n{}\n\n".
+              format(nudge['JIRA'],
+                     nudge['SUMM'],
+                     nudge['SPRINT'],
+                     nudge['LABELS'],
+                     nudge['OWNER'],
+                     nudge['CREATOR'],
+                     nudge['STATUS'],
+                     nudge['LINK'],
+                     "\n".join(wrap(latestComment,100))
+             ))
+        if len(nudge['TASKS']) > 0 :
+            print("Sub-Tasks for {}".format(nudge['JIRA']))
+            for tasks in nudge['TASKS'] :
+                print("JIRA : {}\nStatus : {}\nSummary :{}\n".format(tasks['key'],tasks['fields']['status']['name'],tasks['fields']['summary']))
+        print("+{}+".format("="*100))
+
+        if args.dash:
+            print("</td></tr>")
+
+    if args.dash:
+        print("</table></body></html>")
+
+else :
     log.logger.info("Number of nudges: {}".format(len(nudges)))
 
     if len(nudges) > 0 :
@@ -119,34 +187,3 @@ if not args.report :
                             nudge['OWNER'],
                             nudge['UPDATED'],
                             nudge['LINK']))
-else:
-    nudges.sort(key=operator.itemgetter('OWNER'))
-    for nudge in nudges:
-        if len(nudge['COMMENTS']) > 0 :
-            latestCommentID = nudge['COMMENTS'].pop()
-            latestComment = conn.comment(nudge['ID'],latestCommentID).body
-        else:
-            latestComment = "No comments"
-        if nudge['STATUS'] == "To Do":
-            continue
-
-        epic = conn.search_issues("project = PerfScale AND id={} AND \"Epic Link\" is not EMPTY".format(nudge['ID']))
-
-        print("+{}+".format("="*100))
-        if len(epic) == 0 :
-            print(" -- NOTE:: {} has no EPIC assigned, please link to an EPIC -- ".format(nudge['JIRA']))
-        print("{} - {} \nLabels: {}\nOwner: {}\nCreator: {}\nStatus: {}\nLink: {}\nLast Comment:\n{}\n\n".
-              format(nudge['JIRA'],
-                     nudge['SUMM'],
-                     nudge['LABELS'],
-                     nudge['OWNER'],
-                     nudge['CREATOR'],
-                     nudge['STATUS'],
-                     nudge['LINK'],
-                     "\n".join(wrap(latestComment,100))
-             ))
-        if len(nudge['TASKS']) > 0 :
-            print("Sub-Tasks for {}".format(nudge['JIRA']))
-            for tasks in nudge['TASKS'] :
-                print("JIRA : {}\nStatus : {}\nSummary :{}\n".format(tasks['key'],tasks['fields']['status']['name'],tasks['fields']['summary']))
-        print("+{}+".format("="*100))
