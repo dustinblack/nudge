@@ -118,10 +118,15 @@ if len(issues) > 0 :
 nudges.sort(key=operator.itemgetter('SPRINT'))
 
 if args.report or args.dash :
-    nudges.sort(key=operator.itemgetter('OWNER'))
+    nudges.sort(key=operator.itemgetter('SPRINT'))
+    currentSprint = ''
     if args.dash:
         print("<html><body><table>")
     for nudge in nudges:
+        if currentSprint != nudge['SPRINT'] :
+            currentSprint = nudge['SPRINT']
+            print("+{}+".format("="*100))
+            print("=== SPRINT: {} ===".format(currentSprint))
         if len(nudge['COMMENTS']) > 0 :
             latestCommentID = nudge['COMMENTS'].pop()
             latestComment = conn.comment(nudge['ID'],latestCommentID).body
@@ -138,10 +143,9 @@ if args.report or args.dash :
         print("+{}+".format("="*100))
         if len(epic) == 0 :
             print(" -- NOTE:: {} has no EPIC assigned, please link to an EPIC -- ".format(nudge['JIRA']))
-        print("{} - {} \nSprint: {}\nLabels: {}\nOwner: {}\nCreator: {}\nStatus: {}\nLink: {}\nLast Comment:\n{}\n\n".
+        print("{} - {} \nLabels: {}\nOwner: {}\nCreator: {}\nStatus: {}\nLink: {}\nLast Comment:\n{}\n\n".
               format(nudge['JIRA'],
                      nudge['SUMM'],
-                     nudge['SPRINT'],
                      nudge['LABELS'],
                      nudge['OWNER'],
                      nudge['CREATOR'],
@@ -153,11 +157,11 @@ if args.report or args.dash :
             print("Sub-Tasks for {}".format(nudge['JIRA']))
             for tasks in nudge['TASKS'] :
                 print("JIRA : {}\nStatus : {}\nSummary :{}\n".format(tasks['key'],tasks['fields']['status']['name'],tasks['fields']['summary']))
-        print("+{}+".format("="*100))
 
         if args.dash:
             print("</td></tr>")
 
+    print("+{}+".format("="*100))
     if args.dash:
         print("</table></body></html>")
 
