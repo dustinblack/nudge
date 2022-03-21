@@ -21,6 +21,9 @@ import os
 import argparse
 import operator
 import re
+import webbrowser
+import sys
+from datetime import datetime, timedelta
 
 parser= argparse.ArgumentParser(description="Tool to query and help nudge JIRA users")
 parser.add_argument(
@@ -34,6 +37,8 @@ parser.add_argument(
     action='store_true',
     dest="dash")
 args = parser.parse_args()
+
+dashFile = '/var/tmp/nudge.html'
 
 # Team Name
 teamName="Team"
@@ -118,15 +123,20 @@ if len(issues) > 0 :
 nudges.sort(key=operator.itemgetter('SPRINT'))
 
 if args.report or args.dash :
+    if args.dash :
+        sys.stdout = open(dashFile, 'w')
+
     nudges.sort(key=operator.itemgetter('SPRINT'))
     currentSprint = ''
     if args.dash:
-        print("<html><body><table>")
+        print("<html><body><pre>")
     for nudge in nudges:
         if currentSprint != nudge['SPRINT'] :
             currentSprint = nudge['SPRINT']
             print("+{}+".format("="*100))
-            print("\x1b[1;37;44m" + "=== SPRINT: {} ===".format(currentSprint) + "\x1b[0m")
+            if args.report: print("\x1b[1;37;44m")
+            print("\n=== SPRINT: {} ===".format(currentSprint))
+            if args.report: print("\x1b[0m")
         if len(nudge['COMMENTS']) > 0 :
             latestCommentID = nudge['COMMENTS'].pop()
             latestComment = conn.comment(nudge['ID'],latestCommentID).body
@@ -137,13 +147,20 @@ if args.report or args.dash :
 
         epic = conn.search_issues("project = PerfScale AND id={} AND \"Epic Link\" is not EMPTY".format(nudge['ID']))
 
-        if args.dash:
-            print("<tr><td>")
+        #if args.dash:
+        #    print("<tr><td>")
 
         print("+{}+".format("="*100))
         if len(epic) == 0 :
-            print("\x1b[0;30;43m" + " -- NOTE:: {} has no EPIC assigned, please link to an EPIC -- ".format(nudge['JIRA']) + "\x1b[0m")
-        print("{} - {} \nLabels: {}\nOwner: {}\nCreator: {}\nStatus: {}\nLink: {}\nLast Comment:\n{}\n\n".
+            if args.report: print("\x1b[0;30;43m")
+            print("\n -- NOTE:: {} has no EPIC assigned, please link to an EPIC -- ".format(nudge['JIRA']))
+            if args.report: print("\x1b[0m")
+        updated = datetime.strptime(nudge['UPDATED'].split('T')[0], '%Y-%m-%d')
+        if (datetime.now() - updated) > timedelta(days = 5):
+            if args.report: print("\x1b[1;37;41m")
+            print("\n -- NOTE:: Has not been updated since {}. Please {} provide an update. -- ".format(nudge['UPDATED'].split('T')[0], nudge['OWNER']))
+            if args.report: print("\x1b[0m")
+        print("{} - {} \nLabels: {}\nOwner: {}\nCreator: {}\nStatus: {}\nLink: {}\nUpdated: {}\nLast Comment:\n{}\n\n".
               format(nudge['JIRA'],
                      nudge['SUMM'],
                      nudge['LABELS'],
@@ -151,6 +168,7 @@ if args.report or args.dash :
                      nudge['CREATOR'],
                      nudge['STATUS'],
                      nudge['LINK'],
+                     nudge['UPDATED'].split('T')[0],
                      "\n".join(wrap(latestComment,100))
              ))
         if len(nudge['TASKS']) > 0 :
@@ -158,12 +176,14 @@ if args.report or args.dash :
             for tasks in nudge['TASKS'] :
                 print("JIRA : {}\nStatus : {}\nSummary :{}\n".format(tasks['key'],tasks['fields']['status']['name'],tasks['fields']['summary']))
 
-        if args.dash:
-            print("</td></tr>")
+        #if args.dash:
+        #    print("</td></tr>")
 
     print("+{}+".format("="*100))
     if args.dash:
-        print("</table></body></html>")
+        print("</pre></body></html>")
+        sys.stdout.close()
+        webbrowser.open('file://{}'.format(dashFile), new=2)
 
 else :
     log.logger.info("Number of nudges: {}".format(len(nudges)))
