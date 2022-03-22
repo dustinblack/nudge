@@ -75,7 +75,7 @@ issues=[]
 nudges=[]
 nudgeMessage=[]
 
-## TODO I might need this to looup the custom field name in a better way
+## TODO I might need this to lookup the custom field name in a better way
 #allfields = conn.fields()
 #nameMap = {field['name']:field['id'] for field in allfields}
 #for field in allfields:
@@ -134,7 +134,23 @@ if args.report or args.dash :
     #nudges.sort(key=operator.itemgetter('SPRINT'))
     currentSprint = ''
     if args.dash:
-        print("<html><body><pre>")
+        print("""
+              <html>
+              <style>
+                .sprint {
+                    background-color: blue;
+                    color: white;
+                }
+                .noepic {
+                    background-color: yellow;
+                }
+                .needsupdate {
+                    background-color: red;
+                    color: white;
+                }
+              </style>
+              <body><pre>
+              """)
     for nudge in nudges:
         if args.activeOnly :
             if "To Do" in nudge['STATUS'] or "Closed" in nudge['STATUS'] :
@@ -143,7 +159,9 @@ if args.report or args.dash :
             currentSprint = nudge['SPRINT']
             print("+{}+".format("="*100), end='')
             if args.report: print("\x1b[1;37;44m")
+            if args.dash: print('<div class="sprint">', end='')
             print("\n=== SPRINT: {} ===".format(currentSprint))
+            if args.dash: print('\n</div>', end='')
             if args.report: print("\x1b[0m")
         if len(nudge['COMMENTS']) > 0 :
             latestCommentID = nudge['COMMENTS'].pop()
@@ -159,12 +177,16 @@ if args.report or args.dash :
         print("+{}+".format("="*100))
         if len(epic) == 0 :
             if args.report: print("\x1b[0;30;43m")
+            if args.dash: print('<div class="noepic">', end='')
             print("\n -- NOTE:: {} has no EPIC assigned, please link to an EPIC -- ".format(nudge['JIRA']))
+            if args.dash: print('\n</div>', end='')
             if args.report: print("\x1b[0m")
         updated = datetime.strptime(nudge['UPDATED'].split('T')[0], '%Y-%m-%d')
         if (datetime.now() - updated) > timedelta(days = 5) and 'Closed' not in nudge['STATUS']:
             if args.report: print("\x1b[1;37;41m")
+            if args.dash: print('<div class="needsupdate">', end='')
             print("\n -- NOTE:: Has not been updated since {}. Please {} provide an update. -- ".format(nudge['UPDATED'].split('T')[0], nudge['OWNER']))
+            if args.dash: print('\n</div>', end='')
             if args.report: print("\x1b[0m")
         print("\n{} - {} \nLabels: {}\nOwner: {}\nCreator: {}\nStatus: {}\nLink: {}\nUpdated: {}\nLast Comment:\n{}\n\n".
               format(nudge['JIRA'],
