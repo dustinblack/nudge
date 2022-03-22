@@ -142,8 +142,8 @@ if args.report or args.dash :
             latestComment = conn.comment(nudge['ID'],latestCommentID).body
         else:
             latestComment = "No comments"
-        if nudge['STATUS'] == "To Do":
-            continue
+        #if nudge['STATUS'] == "To Do":
+        #    continue
 
         epic = conn.search_issues("project = PerfScale AND id={} AND \"Epic Link\" is not EMPTY".format(nudge['ID']))
 
