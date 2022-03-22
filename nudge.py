@@ -90,7 +90,7 @@ if len(issues) > 0 :
     for issue in issues:
         for jira in issue['issues'] :
             if jira['fields']['assignee'] is None:
-                owner = "No Owner"
+                owner = "NO OWNER"
             else :
                 owner = jira['fields']['assignee']['displayName']
 
@@ -120,20 +120,20 @@ if len(issues) > 0 :
                 "TASKS" : jira['fields']['subtasks']
             })
 
-nudges.sort(key=operator.itemgetter('SPRINT'))
+nudges.sort(key=operator.itemgetter('SPRINT', 'STATUS', 'CREATOR'), reverse=True)
 
 if args.report or args.dash :
     if args.dash :
         sys.stdout = open(dashFile, 'w')
 
-    nudges.sort(key=operator.itemgetter('SPRINT'))
+    #nudges.sort(key=operator.itemgetter('SPRINT'))
     currentSprint = ''
     if args.dash:
         print("<html><body><pre>")
     for nudge in nudges:
         if currentSprint != nudge['SPRINT'] :
             currentSprint = nudge['SPRINT']
-            print("+{}+".format("="*100))
+            print("+{}+".format("="*100), end='')
             if args.report: print("\x1b[1;37;44m")
             print("\n=== SPRINT: {} ===".format(currentSprint))
             if args.report: print("\x1b[0m")
@@ -156,11 +156,11 @@ if args.report or args.dash :
             print("\n -- NOTE:: {} has no EPIC assigned, please link to an EPIC -- ".format(nudge['JIRA']))
             if args.report: print("\x1b[0m")
         updated = datetime.strptime(nudge['UPDATED'].split('T')[0], '%Y-%m-%d')
-        if (datetime.now() - updated) > timedelta(days = 5):
+        if (datetime.now() - updated) > timedelta(days = 5) and 'Closed' not in nudge['STATUS']:
             if args.report: print("\x1b[1;37;41m")
             print("\n -- NOTE:: Has not been updated since {}. Please {} provide an update. -- ".format(nudge['UPDATED'].split('T')[0], nudge['OWNER']))
             if args.report: print("\x1b[0m")
-        print("{} - {} \nLabels: {}\nOwner: {}\nCreator: {}\nStatus: {}\nLink: {}\nUpdated: {}\nLast Comment:\n{}\n\n".
+        print("\n{} - {} \nLabels: {}\nOwner: {}\nCreator: {}\nStatus: {}\nLink: {}\nUpdated: {}\nLast Comment:\n{}\n\n".
               format(nudge['JIRA'],
                      nudge['SUMM'],
                      nudge['LABELS'],
