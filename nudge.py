@@ -101,7 +101,7 @@ if len(issues) > 0 :
                 foo = {}
                 for l in lst :
                     foo[l.split('=')[0]] = l.split('=')[1]
-                if "ACTIVE" in foo['state'] :
+                if "ACTIVE" or "FUTURE" in foo['state'] :
                     sprint = foo['name']
 
             nudges.append({
