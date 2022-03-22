@@ -106,8 +106,10 @@ if len(issues) > 0 :
                 foo = {}
                 for l in lst :
                     foo[l.split('=')[0]] = l.split('=')[1]
-                if "ACTIVE" in foo['state'] or "FUTURE" in foo['state'] :
+                if "ACTIVE" in foo['state'] :
                     sprint = foo['name']
+                elif "FUTURE" in foo['state'] :
+                    sprint = "FUTURE {}".format(foo['name'])
 
             nudges.append({
                 "JIRA" : "{}".format(jira['key']),
