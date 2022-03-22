@@ -36,6 +36,11 @@ parser.add_argument(
     default=False,
     action='store_true',
     dest="dash")
+parser.add_argument(
+    "--active_only",
+    default=False,
+    action='store_true',
+    dest="activeOnly")
 args = parser.parse_args()
 
 dashFile = '/var/tmp/nudge.html'
@@ -101,7 +106,7 @@ if len(issues) > 0 :
                 foo = {}
                 for l in lst :
                     foo[l.split('=')[0]] = l.split('=')[1]
-                if "ACTIVE" or "FUTURE" in foo['state'] :
+                if "ACTIVE" in foo['state'] or "FUTURE" in foo['state'] :
                     sprint = foo['name']
 
             nudges.append({
@@ -131,6 +136,9 @@ if args.report or args.dash :
     if args.dash:
         print("<html><body><pre>")
     for nudge in nudges:
+        if args.activeOnly :
+            if "To Do" in nudge['STATUS'] or "Closed" in nudge['STATUS'] :
+                continue
         if currentSprint != nudge['SPRINT'] :
             currentSprint = nudge['SPRINT']
             print("+{}+".format("="*100), end='')
@@ -142,8 +150,6 @@ if args.report or args.dash :
             latestComment = conn.comment(nudge['ID'],latestCommentID).body
         else:
             latestComment = "No comments"
-        #if nudge['STATUS'] == "To Do":
-        #    continue
 
         epic = conn.search_issues("project = PerfScale AND id={} AND \"Epic Link\" is not EMPTY".format(nudge['ID']))
 
@@ -190,6 +196,9 @@ else :
 
     if len(nudges) > 0 :
         for nudge in nudges:
+            if args.activeOnly :
+                if "To Do" in nudge['STATUS'] or "Closed" in nudge['STATUS'] :
+                    continue
             nudgeMessage.append("{}\nHas not been updated since {}. Please {} provide an update {}\n".
                     format(nudge['JIRA'],
                         nudge['UPDATED'].split('T')[0],
@@ -206,6 +215,9 @@ else :
     	    log.logger.info("Email Sent")
         else :
             for nudge in nudges:
+                if args.activeOnly :
+                    if "To Do" in nudge['STATUS'] or "Closed" in nudge['STATUS'] :
+                        continue
                 print("{} Needs to be updated by {}. Last update was {}. Link {}".
                     format(nudge['JIRA'],
                             nudge['OWNER'],
